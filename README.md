@@ -74,6 +74,57 @@ Content-Type: application/json
 | POST | `/api/v1/config/event` | 动态添加/修改事件映射 |
 | POST | `/api/v1/config/reload` | 热重载配置文件 |
 
+## Claude Code Hook 配置
+
+### 配置文件位置
+
+Claude Code 按优先级合并三个层级的设置：
+
+| 层级 | 路径 | 作用范围 |
+|------|------|---------|
+| 用户级 | `~/.claude/settings.json` | 本机所有项目 |
+| 项目级 | `<project>/.claude/settings.json` | 仅当前项目 |
+| 本地级 | `<project>/.claude/settings.local.json` | 仅当前项目（不提交 Git） |
+
+Windows 上 `~` 即 `C:\Users\<用户名>`。
+
+### 配置 Hook 回调
+
+在 `settings.json` 的 `hooks` 字段中为每个事件配置 HTTP 回调：
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 1 -X POST http://localhost:8080/api/v1/event -H 'Content-Type: application/json' -d '{\"event\":\"SessionStart\"}'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 1 -X POST http://localhost:8080/api/v1/event -H 'Content-Type: application/json' -d '{\"event\":\"UserPromptSubmit\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- 每个事件是一个 matcher 数组，入口包含可选 `matcher` 字段（默认为空，匹配所有工具）
+- `matcher` 可指定工具名如 `"Write|Edit"` 来限定触发范围
+- 每个 matcher 的 `hooks` 数组中定义实际执行的 hook 动作
+- `-s` 静默模式，`-m 1` 超时 1 秒，确保 hook 不阻塞 Claude Code 主流程
+- 完整事件列表参考 [Hooks 官方文档](https://code.claude.com/docs/zh-TW/hooks-guide)
+
 ## 默认事件映射
 
 | 事件 | 灯效 | 颜色 | 触发场景 |
@@ -87,7 +138,6 @@ Content-Type: application/json
 | PostToolUseFailure | gradient_pulse | [255, 0, 0] | 工具调用失败 |
 | StopFailure | gradient_pulse | [255, 0, 0] | 停止失败 |
 | SubagentStart | gradient_pulse | [255, 0, 0] | 子代理启动 |
-| FileChanged | pulse | [200, 200, 200] | 文件变更 |
 
 ## 架构
 

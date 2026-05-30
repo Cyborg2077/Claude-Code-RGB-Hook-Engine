@@ -74,6 +74,57 @@ Content-Type: application/json
 | POST | `/api/v1/config/event` | Add or modify an event mapping |
 | POST | `/api/v1/config/reload` | Hot reload config from `event_map.json` |
 
+## Claude Code Hook Configuration
+
+### Settings File Locations
+
+Claude Code merges three tiers of configuration by priority:
+
+| Tier | Path | Scope |
+|------|------|-------|
+| User | `~/.claude/settings.json` | All projects on this machine |
+| Project | `<project>/.claude/settings.json` | Current project only |
+| Local | `<project>/.claude/settings.local.json` | Current project only (not committed) |
+
+On Windows, `~` resolves to `C:\Users\<username>`.
+
+### Configuring Hook Callbacks
+
+Add HTTP callbacks for each event in the `hooks` field of `settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 1 -X POST http://localhost:8080/api/v1/event -H 'Content-Type: application/json' -d '{\"event\":\"SessionStart\"}'"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -m 1 -X POST http://localhost:8080/api/v1/event -H 'Content-Type: application/json' -d '{\"event\":\"UserPromptSubmit\"}'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- Each event maps to an array of matcher objects, each with an optional `matcher` field (empty = match all tools)
+- Set `matcher` to a tool name like `"Write|Edit"` to limit trigger scope
+- The `hooks` array inside each matcher defines the actual hook actions
+- `-s` silent mode + `-m 1` 1-second timeout ensures hooks don't block Claude Code
+- See the [Hooks documentation](https://code.claude.com/docs/en/hooks-guide) for the full list of supported events
+
 ## Default Event Mappings
 
 | Event | Effect | Color | Trigger |
